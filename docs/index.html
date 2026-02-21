@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeFi APY Radar</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#080c10;--surface:#0e1520;--border:#1a2535;--accent:#00e5ff;--accent2:#7fff6e;--accent3:#ff6b35;--text:#e2eaf5;--muted:#5a7090;--card-hover:#111d2e; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+  .wrapper{max-width:1100px;margin:0 auto;padding:0 24px;position:relative;z-index:1;}
+  header{padding:48px 0 32px;border-bottom:1px solid var(--border);}
+  .header-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;}
+  .logo-area h1{font-size:2.4rem;font-weight:800;letter-spacing:-1px;line-height:1;}
+  .logo-area h1 span{color:var(--accent);}
+  .logo-area p{font-family:'Space Mono',monospace;color:var(--muted);font-size:.75rem;margin-top:8px;}
+  .update-badge{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+  .update-label{font-family:'Space Mono',monospace;font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
+  .update-date{font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent2);background:rgba(127,255,110,.08);border:1px solid rgba(127,255,110,.2);padding:5px 12px;border-radius:4px;}
+  .update-next{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);}
+  .stats-bar{display:flex;gap:32px;margin-top:24px;flex-wrap:wrap;}
+  .stat{display:flex;flex-direction:column;gap:2px;}
+  .stat-value{font-size:1.5rem;font-weight:800;color:var(--accent);}
+  .stat-label{font-family:'Space Mono',monospace;font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+  .filters{display:flex;gap:8px;margin:28px 0 16px;flex-wrap:wrap;}
+  .filter-btn{font-family:'Space Mono',monospace;font-size:.68rem;padding:6px 14px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;}
+  .filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.05);}
+  .disclaimer{background:rgba(255,107,53,.06);border:1px solid rgba(255,107,53,.2);border-radius:6px;padding:10px 16px;margin-bottom:20px;font-family:'Space Mono',monospace;font-size:.63rem;color:var(--accent3);line-height:1.6;}
+  .protocols-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:48px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;transition:all .2s;position:relative;overflow:hidden;animation:fadeIn .4s ease both;}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--card-accent,var(--accent));opacity:.7;}
+  .card:hover{background:var(--card-hover);border-color:var(--card-accent,var(--accent));transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.4);}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+  .protocol-info{display:flex;align-items:center;gap:10px;}
+  .protocol-icon{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+  .protocol-name{font-weight:800;font-size:1rem;}
+  .protocol-chain{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+  .category-tag{font-family:'Space Mono',monospace;font-size:.58rem;padding:3px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:.06em;border:1px solid currentColor;opacity:.7;white-space:nowrap;}
+  .apy-section{display:flex;align-items:flex-end;gap:8px;margin-bottom:14px;}
+  .apy-value{font-size:2.2rem;font-weight:800;line-height:1;color:var(--card-accent,var(--accent));}
+  .apy-meta{display:flex;flex-direction:column;gap:2px;margin-bottom:4px;}
+  .apy-label{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);}
+  .apy-sub{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);opacity:.8;}
+  .risk-tvl{display:flex;gap:16px;margin-bottom:14px;}
+  .mini-stat{display:flex;flex-direction:column;gap:2px;}
+  .mini-stat-label{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+  .mini-stat-value{font-family:'Space Mono',monospace;font-size:.75rem;}
+  .risk-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle;}
+  .risk-low{color:var(--accent2);} .risk-low .risk-dot{background:var(--accent2);}
+  .risk-medium{color:#ffd166;} .risk-medium .risk-dot{background:#ffd166;}
+  .description{font-size:.77rem;color:var(--muted);line-height:1.5;margin-bottom:16px;}
+  .card-footer{display:flex;justify-content:space-between;align-items:center;}
+  .visit-btn{display:inline-flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:.66rem;padding:7px 14px;border-radius:4px;border:1px solid var(--card-accent,var(--accent));color:var(--card-accent,var(--accent));text-decoration:none;transition:all .15s;}
+  .visit-btn:hover{background:var(--card-accent,var(--accent));color:var(--bg);}
+  .visit-btn svg{width:10px;height:10px;}
+  .strategy-tag{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);background:rgba(255,255,255,.03);padding:3px 7px;border-radius:3px;}
+  footer{border-top:1px solid var(--border);padding:24px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+  footer p{font-family:'Space Mono',monospace;font-size:.63rem;color:var(--muted);}
+  footer a{color:var(--accent);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="header-top">
+      <div class="logo-area">
+        <h1>DEFI <span>YIELD</span> RADAR</h1>
+        <p>// MISE À JOUR AUTOMATIQUE CHAQUE LUNDI · DEFILLAMA</p>
+      </div>
+      <div class="update-badge">
+        <span class="update-label">Dernière mise à jour</span>
+        <span class="update-date">21 February 2026 à 15:06 UTC</span>
+        <span class="update-next">↻ Prochaine mise à jour : lundi 8h UTC</span>
+      </div>
+    </div>
+    <div class="stats-bar">
+      <div class="stat"><span class="stat-value">10</span><span class="stat-label">Protocoles</span></div>
+      <div class="stat"><span class="stat-value">40.2%</span><span class="stat-label">APY Max</span></div>
+      <div class="stat"><span class="stat-value">3.0%</span><span class="stat-label">APY Médian</span></div>
+    </div>
+  </header>
+
+  <div class="filters" id="filters">
+    <button class="filter-btn active" data-filter="all">Tous</button>
+    <button class="filter-btn" data-filter="Lending">Lending</button>
+    <button class="filter-btn" data-filter="Liquidity">Liquidité</button>
+    <button class="filter-btn" data-filter="Staking">Staking</button>
+    <button class="filter-btn" data-filter="CDP">CDP</button>
+    <button class="filter-btn" data-filter="Yield">Yield Agg.</button>
+  </div>
+
+  <div class="disclaimer">⚠ APY générés chaque lundi depuis DeFiLlama. Ils varient constamment. Ce dashboard n'est pas un conseil financier — DYOR.</div>
+
+  <div class="protocols-grid" id="grid">
+    
+        <div class="card" style="--card-accent:#b6509e;animation-delay:0ms" data-category="Lending">
+          <div class="card-header">
+            <div class="protocol-info">
+              <div class="protocol-icon" style="background:#b6509e22">👻</div>
+              <div>
+                <div class="protocol-name">Aave v3</div>
+                <div class="protocol-chain">Ethereum</div>
+              </div>
+            </div>
+            <span class="category-tag" style="color:#4287f5;border-color:#4287f544">Lending</span>
+          </div>
+          <div class="apy-section">
+            <div class="apy-value">2.2%</div>
+            <div class="apy-meta">
+              <span class="apy-label">APY / an</span>
+              
+            </div>
+          </div>
+          <div class="risk-tvl">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Risque</span>
+              <span class="mini-stat-value risk-low"><span class="risk-dot"></span>Faible</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">TVL</span>
+              <span class="mini-stat-value">$1.3B</span>
+            </div>
+          </div>
+          <p class="description">Leader du lending décentralisé. Déposez USDC/USDT et percevez des intérêts sur la plateforme la plus auditée du marché.</p>
+          <div class="card-footer">
+            <a href="https://app.aave.com" target="_blank" rel="noopener" class="visit-btn">
+              Accéder
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
+            </a>
+            <span class="strategy-tag">USDC supply</span>
+          </div>
+        </div>
+        <div class="card" style="--card-accent:#4287f5;animation-delay:60ms" data-category="Lending">
+          <div class="card-header">
+            <div class="protocol-info">
+              <div class="protocol-icon" style="background:#4287f522">🦋</div>
+              <div>
+                <div class="protocol-name">Morpho</div>
+                <div class="protocol-chain">Ethereum</div>
+              </div>
+            </div>
+            <span class="category-tag" style="color:#4287f5;border-color:#4287f544">Lending</span>
+          </div>
+          <div class="apy-section">
+            <div class="apy-value">3.4%</div>
+            <div class="apy-meta">
+              <span class="apy-label">APY / an</span>
+              <span class="apy-sub">Base 3.0% + Rewards 0.4%</span>
+            </div>
+          </div>
+          <div class="risk-tvl">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Risque</span>
+              <span class="mini-stat-value risk-low"><span class="risk-dot"></span>Faible</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">TVL</span>
+              <span class="mini-stat-value">$318M</span>
+            </div>
+          </div>
+          <p class="description">Protocole peer-to-peer optimisant les taux d'Aave. Meilleurs rendements pour les déposants USDC/USDT.</p>
+          <div class="card-footer">
+            <a href="https://morpho.org" target="_blank" rel="noopener" class="visit-btn">
+              Accéder
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
+            </a>
+            <span class="strategy-tag">USDC Vault</span>
+          </div>
+        </div>
+        <div class="card" style="--card-accent:#00a3ff;animation-delay:120ms" data-category="Staking">
+          <div class="card-header">
+            <div class="protocol-info">
+              <div class="protocol-icon" style="background:#00a3ff22">🌊</div>
+              <div>
+                <div class="protocol-name">Lido</div>
+                <div class="protocol-chain">Ethereum</div>
+              </div>
+            </div>
+            <span class="category-tag" style="color:#00a3ff;border-color:#00a3ff44">Staking</span>
+          </div>
+          <div class="apy-section">
+            <div class="apy-value">2.3%</div>
+            <div class="apy-meta">
+              <span class="apy-label">APY / an</span>
+              
+            </div>
+          </div>
+          <div class="risk-tvl">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Risque</span>
+              <span class="mini-stat-value risk-low"><span class="risk-dot"></span>Faible</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">TVL</span>
+              <span class="mini-stat-value">$18.7B</span>
+            </div>
+          </div>
+          <p class="description">Leader du liquid staking ETH. Stakez de l'ETH et recevez du stETH utilisable partout dans l'écosystème DeFi.</p>
+          <div class="card-footer">
+            <a href="https://lido.fi" target="_blank" rel="noopener" class="visit-btn">
+              Accéder
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
+            </a>
+            <span class="strategy-tag">ETH → stETH</span>
+          </div>
+        </div>
+        <div class="card" style="--card-accent:#3a65b6;animation-delay:180ms" data-category="Liquidity">
+          <div class="card-header">
+            <div class="protocol-info">
+              <div class="protocol-icon" style="background:#3a65b622">🔵</div>
+              <div>
+                <div class="protocol-name">Curve Finance</div>
+                <div class="protocol-chain">Ethereum</div>
+              </div>
+            </div>
+            <span class="category-tag" style="color:#ff007a;border-color:#ff007a44">Liquidity</span>
+          </div>
+          <div class="apy-section">
+            <div class="apy-value">0.2%</div>
+            <div class="apy-meta">
+              <span class="apy-label">APY / an</span>
+              <span class="apy-sub">Base 0.2% + Rewards 0.0%</span>
+            </div>
+          </div>
+          <div class="risk-tvl">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Risque</span>
+              <span class="mini-stat-value risk-low"><span class="risk-dot"></span>Faible</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">TVL</span>
+              <span class="mini-stat-value">$12M</span>
+            </div>
+          </div>
+          <p class="description">Référence des pools stablecoins. Frais de swap minimes et rendements solides sur le 3pool et tricrypto.</p>
+          <div class="card-footer">
+            <a href="https://curve.fi" target="_blank" rel="noopener" class="visit-btn">
+              Accéder
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
+            </a>
+            <span class="strategy-tag">3pool</span>
+          </div>
+        </div>
+        <div class="card" style="--card-accent:#ff007a;animation-delay:240ms" data-category="Liquidity">
+          <div class="card-header">
+            <div class="protocol-info">
+              <div class="protocol-icon" style="background:#ff007a22">🦄</div>
+              <div>
+                <div class="protocol-name">Uniswap v3</div>
+                <div class="protocol-chain">Ethereum</div>
+              </div>
+            </div>
+            <span class="category-tag" style="color:#ff007a;border-color:#ff007a44">Liquidity</span>
+          </div>
+          <div class="apy-section">
+            <div class="apy-value">40.2%</div>
+            <div class="apy-meta">
+              <span class="apy-label">APY / an</span>
+              
+            </div>
+          </div>
+          <div class="risk-tvl">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Risque</span>
+              <span class="mini-stat-value risk-medium"><span class="risk-dot"></span>Modéré</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">TVL</span>
+              <span class="mini-stat-value">$87M</span>
+            </div>
+          </div>
+          <p class="description">DEX de référence. Les positions concentrées USDC/ETH 0.05% offrent des rendements élevés pour les LPs actifs.</p>
+          <div class="card-footer">
+            <a href="https://app.uniswap.org" target="_blank" rel="noopener" class="visit-btn">
+              Accéder
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
+            </a>
+            <span class="strategy-tag">USDC/ETH 0.05%</span>
+          </div>
+        </div>
+        <div class="card" style="--card-accent:#0dc8c8;animation-delay:300ms" data-category="Yield">
+          <div class="card-header">
+            <div class="protocol-info">
+              <div class="protocol-icon" style="background:#0dc8c822">📐</div>
+              <div>
+                <div class="protocol-name">Pendle Finance</div>
+                <div class="protocol-chain">Ethereum</div>
+              </div>
+            </div>
+            <span class="category-tag" style="color:#7fff6e;border-color:#7fff6e44">Yield</span>
+          </div>
+          <div class="apy-section">
+            <div class="apy-value">2.8%</div>
+            <div class="apy-meta">
+              <span class="apy-label">APY / an</span>
+              <span class="apy-sub">Base 2.7% + Rewards 0.1%</span>
+            </div>
+          </div>
+          <div class="risk-tvl">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Risque</span>
+              <span class="mini-stat-value risk-medium"><span class="risk-dot"></span>Modéré</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">TVL</span>
+              <span class="mini-stat-value">$1M</span>
+            </div>
+          </div>
+          <p class="description">Tokenisation innovante du yield. PT pour taux fixe garanti, YT pour maximiser le rendement variable sur actifs porteurs d'intérêt.</p>
+          <div class="card-footer">
+            <a href="https://www.pendle.finance" target="_blank" rel="noopener" class="visit-btn">
+              Accéder
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
+            </a>
+            <span class="strategy-tag">PT eETH</span>
+          </div>
+        </div>
+        <div class="card" style="--card-accent:#ff6b00;animation-delay:360ms" data-category="Yield">
+          <div class="card-header">
+            <div class="protocol-info">
+              <div class="protocol-icon" style="background:#ff6b0022">⚡</div>
+              <div>
+                <div class="protocol-name">Convex Finance</div>
+                <div class="protocol-chain">Ethereum</div>
+              </div>
+            </div>
+            <span class="category-tag" style="color:#7fff6e;border-color:#7fff6e44">Yield</span>
+          </div>
+          <div class="apy-section">
+            <div class="apy-value">10.3%</div>
+            <div class="apy-meta">
+              <span class="apy-label">APY / an</span>
+              
+            </div>
+          </div>
+          <div class="risk-tvl">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Risque</span>
+              <span class="mini-stat-value risk-medium"><span class="risk-dot"></span>Modéré</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">TVL</span>
+              <span class="mini-stat-value">$42M</span>
+            </div>
+          </div>
+          <p class="description">Boost des rendements Curve sans immobiliser de CRV. Maximise les récompenses des pools Curve en empilant les rewards cvxCRV.</p>
+          <div class="card-footer">
+            <a href="https://www.convexfinance.com" target="_blank" rel="noopener" class="visit-btn">
+              Accéder
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
+            </a>
+            <span class="strategy-tag">cvxCRV staking</span>
+          </div>
+        </div>
+        <div class="card" style="--card-accent:#00e5ff;animation-delay:420ms" data-category="CDP">
+          <div class="card-header">
+            <div class="protocol-info">
+              <div class="protocol-icon" style="background:#00e5ff22">🔷</div>
+              <div>
+                <div class="protocol-name">Ethena</div>
+                <div class="protocol-chain">Ethereum</div>
+              </div>
+            </div>
+            <span class="category-tag" style="color:#00e5ff;border-color:#00e5ff44">CDP</span>
+          </div>
+          <div class="apy-section">
+            <div class="apy-value">3.5%</div>
+            <div class="apy-meta">
+              <span class="apy-label">APY / an</span>
+              
+            </div>
+          </div>
+          <div class="risk-tvl">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Risque</span>
+              <span class="mini-stat-value risk-medium"><span class="risk-dot"></span>Modéré</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">TVL</span>
+              <span class="mini-stat-value">$3.6B</span>
+            </div>
+          </div>
+          <p class="description">Stablecoin USDe adossé à des positions delta-neutres. Le sUSDe génère du rendement via le funding rate des marchés perpétuels.</p>
+          <div class="card-footer">
+            <a href="https://www.ethena.fi" target="_blank" rel="noopener" class="visit-btn">
+              Accéder
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
+            </a>
+            <span class="strategy-tag">sUSDe staking</span>
+          </div>
+        </div>
+        <div class="card" style="--card-accent:#9945ff;animation-delay:480ms" data-category="Yield">
+          <div class="card-header">
+            <div class="protocol-info">
+              <div class="protocol-icon" style="background:#9945ff22">🌀</div>
+              <div>
+                <div class="protocol-name">Kamino</div>
+                <div class="protocol-chain">Solana</div>
+              </div>
+            </div>
+            <span class="category-tag" style="color:#7fff6e;border-color:#7fff6e44">Yield</span>
+          </div>
+          <div class="apy-section">
+            <div class="apy-value">0.2%</div>
+            <div class="apy-meta">
+              <span class="apy-label">APY / an</span>
+              
+            </div>
+          </div>
+          <div class="risk-tvl">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Risque</span>
+              <span class="mini-stat-value risk-medium"><span class="risk-dot"></span>Modéré</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">TVL</span>
+              <span class="mini-stat-value">$30M</span>
+            </div>
+          </div>
+          <p class="description">Yield automatisé sur Solana. Liquidités concentrées sur Orca/Raydium avec rebalancing automatique des fourchettes de prix.</p>
+          <div class="card-footer">
+            <a href="https://kamino.finance" target="_blank" rel="noopener" class="visit-btn">
+              Accéder
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
+            </a>
+            <span class="strategy-tag">USDC-SOL vault</span>
+          </div>
+        </div>
+        <div class="card" style="--card-accent:#006ae3;animation-delay:540ms" data-category="Yield">
+          <div class="card-header">
+            <div class="protocol-info">
+              <div class="protocol-icon" style="background:#006ae322">🏦</div>
+              <div>
+                <div class="protocol-name">Yearn Finance</div>
+                <div class="protocol-chain">Ethereum</div>
+              </div>
+            </div>
+            <span class="category-tag" style="color:#7fff6e;border-color:#7fff6e44">Yield</span>
+          </div>
+          <div class="apy-section">
+            <div class="apy-value">3.0%</div>
+            <div class="apy-meta">
+              <span class="apy-label">APY / an</span>
+              
+            </div>
+          </div>
+          <div class="risk-tvl">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Risque</span>
+              <span class="mini-stat-value risk-low"><span class="risk-dot"></span>Faible</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">TVL</span>
+              <span class="mini-stat-value">$34M</span>
+            </div>
+          </div>
+          <p class="description">Vaults automatisés optimisant en continu les stratégies de rendement. Idéal pour du yield passif sans gestion active.</p>
+          <div class="card-footer">
+            <a href="https://yearn.fi" target="_blank" rel="noopener" class="visit-btn">
+              Accéder
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
+            </a>
+            <span class="strategy-tag">yvUSDC vault</span>
+          </div>
+        </div>
+  </div>
+
+  <footer>
+    <p>Données : <a href="https://defillama.com/yields" target="_blank">DeFiLlama</a> · Généré le 21 February 2026 à 15:06 UTC</p>
+    <p>Automatisé via <a href="https://github.com/features/actions" target="_blank">GitHub Actions</a> · Hébergé sur GitHub Pages</p>
+  </footer>
+</div>
+<script>
+  document.getElementById('filters').addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const f = btn.dataset.filter;
+    document.querySelectorAll('.card').forEach(c => {
+      c.style.display = (f === 'all' || c.dataset.category === f) ? '' : 'none';
+    });
+  });
+</script>
+</body>
+</html>
