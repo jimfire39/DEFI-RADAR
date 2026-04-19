@@ -4,486 +4,414 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DeFi APY Radar</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#080c10;--surface:#0e1520;--border:#1a2535;--accent:#00e5ff;--accent2:#7fff6e;--accent3:#ff6b35;--text:#e2eaf5;--muted:#5a7090;--card-hover:#111d2e; }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
-  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
-  .wrapper{max-width:1100px;margin:0 auto;padding:0 24px;position:relative;z-index:1;}
-  header{padding:48px 0 32px;border-bottom:1px solid var(--border);}
-  .header-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;}
-  .logo-area h1{font-size:2.4rem;font-weight:800;letter-spacing:-1px;line-height:1;}
-  .logo-area h1 span{color:var(--accent);}
-  .logo-area p{font-family:'Space Mono',monospace;color:var(--muted);font-size:.75rem;margin-top:8px;}
-  .update-badge{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
-  .update-label{font-family:'Space Mono',monospace;font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
-  .update-date{font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent2);background:rgba(127,255,110,.08);border:1px solid rgba(127,255,110,.2);padding:5px 12px;border-radius:4px;}
-  .update-next{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);}
-  .stats-bar{display:flex;gap:32px;margin-top:24px;flex-wrap:wrap;}
-  .stat{display:flex;flex-direction:column;gap:2px;}
-  .stat-value{font-size:1.5rem;font-weight:800;color:var(--accent);}
-  .stat-label{font-family:'Space Mono',monospace;font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
-  .filters{display:flex;gap:8px;margin:28px 0 16px;flex-wrap:wrap;}
-  .filter-btn{font-family:'Space Mono',monospace;font-size:.68rem;padding:6px 14px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;}
-  .filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.05);}
-  .disclaimer{background:rgba(255,107,53,.06);border:1px solid rgba(255,107,53,.2);border-radius:6px;padding:10px 16px;margin-bottom:20px;font-family:'Space Mono',monospace;font-size:.63rem;color:var(--accent3);line-height:1.6;}
-  .protocols-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:48px;}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;transition:all .2s;position:relative;overflow:hidden;animation:fadeIn .4s ease both;}
-  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--card-accent,var(--accent));opacity:.7;}
-  .card:hover{background:var(--card-hover);border-color:var(--card-accent,var(--accent));transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.4);}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-  .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
-  .protocol-info{display:flex;align-items:center;gap:10px;}
-  .protocol-icon{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
-  .protocol-name{font-weight:800;font-size:1rem;}
-  .protocol-chain{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
-  .category-tag{font-family:'Space Mono',monospace;font-size:.58rem;padding:3px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:.06em;border:1px solid currentColor;opacity:.7;white-space:nowrap;}
-  .apy-section{display:flex;align-items:flex-end;gap:8px;margin-bottom:14px;}
-  .apy-value{font-size:2.2rem;font-weight:800;line-height:1;color:var(--card-accent,var(--accent));}
-  .apy-meta{display:flex;flex-direction:column;gap:2px;margin-bottom:4px;}
-  .apy-label{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);}
-  .apy-sub{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);opacity:.8;}
-  .risk-tvl{display:flex;gap:16px;margin-bottom:14px;}
-  .mini-stat{display:flex;flex-direction:column;gap:2px;}
-  .mini-stat-label{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
-  .mini-stat-value{font-family:'Space Mono',monospace;font-size:.75rem;}
-  .risk-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle;}
-  .risk-low{color:var(--accent2);} .risk-low .risk-dot{background:var(--accent2);}
-  .risk-medium{color:#ffd166;} .risk-medium .risk-dot{background:#ffd166;}
-  .description{font-size:.77rem;color:var(--muted);line-height:1.5;margin-bottom:16px;}
-  .card-footer{display:flex;justify-content:space-between;align-items:center;}
-  .visit-btn{display:inline-flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:.66rem;padding:7px 14px;border-radius:4px;border:1px solid var(--card-accent,var(--accent));color:var(--card-accent,var(--accent));text-decoration:none;transition:all .15s;}
-  .visit-btn:hover{background:var(--card-accent,var(--accent));color:var(--bg);}
-  .visit-btn svg{width:10px;height:10px;}
-  .strategy-tag{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);background:rgba(255,255,255,.03);padding:3px 7px;border-radius:3px;}
-  footer{border-top:1px solid var(--border);padding:24px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
-  footer p{font-family:'Space Mono',monospace;font-size:.63rem;color:var(--muted);}
-  footer a{color:var(--accent);text-decoration:none;}
+:root {
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface2: #F0F2F5;
+  --border: #E4E8EF;
+  --border2: #D0D7E3;
+  --text: #0F1724;
+  --text2: #4A5568;
+  --muted: #8896AA;
+  --accent: #0A4FD4;
+  --accent-light: #EBF0FF;
+  --green: #0D9B6B;
+  --green-light: #E6F7F2;
+  --amber: #D97706;
+  --amber-light: #FEF3C7;
+  --red: #DC2626;
+  --red-light: #FEE2E2;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow: 0 4px 16px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+  --radius: 12px;
+  --radius-sm: 7px;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* ── Layout ── */
+.page { max-width:1200px; margin:0 auto; padding:0 24px 64px; }
+
+/* ── Header ── */
+.header {
+  padding: 48px 0 40px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+}
+.header-inner { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:24px; }
+.brand h1 {
+  font-family:'Playfair Display',serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight:900;
+  letter-spacing:-1.5px;
+  line-height:1;
+  color:var(--text);
+}
+.brand h1 em {
+  font-style:normal;
+  color:var(--accent);
+}
+.brand-sub {
+  font-family:'DM Mono',monospace;
+  font-size:.72rem;
+  color:var(--muted);
+  margin-top:8px;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+.update-block {
+  display:flex; flex-direction:column; align-items:flex-end; gap:6px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:14px 18px;
+  box-shadow:var(--shadow-sm);
+}
+.update-label { font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
+.update-date { font-family:'DM Mono',monospace; font-size:.8rem; color:var(--text); font-weight:500; }
+.update-next { font-family:'DM Mono',monospace; font-size:.62rem; color:var(--accent); }
+
+/* ── Stats bar ── */
+.stats-bar {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:12px; margin-bottom:28px;
+}
+.stat-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px 20px;
+  box-shadow:var(--shadow-sm);
+}
+.stat-value { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--text); line-height:1; }
+.stat-label { font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:4px; }
+
+/* ── Toolbar ── */
+.toolbar {
+  display:flex; justify-content:space-between; align-items:center;
+  flex-wrap:wrap; gap:12px; margin-bottom:20px;
+}
+.filters { display:flex; gap:6px; flex-wrap:wrap; }
+.filter-btn {
+  font-family:'DM Mono',monospace; font-size:.68rem; font-weight:500;
+  padding:7px 14px; border-radius:999px;
+  border:1px solid var(--border2); background:var(--surface);
+  color:var(--text2); cursor:pointer; transition:all .15s;
+  letter-spacing:.02em;
+}
+.filter-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); }
+.filter-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+.controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.search-wrap { position:relative; }
+.search-wrap input {
+  font-family:'DM Sans',sans-serif; font-size:.82rem;
+  padding:7px 12px 7px 34px; border-radius:var(--radius-sm);
+  border:1px solid var(--border2); background:var(--surface);
+  color:var(--text); outline:none; width:180px; transition:all .15s;
+}
+.search-wrap input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(10,79,212,.1); width:220px; }
+.search-wrap svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--muted); }
+.sort-select {
+  font-family:'DM Mono',monospace; font-size:.68rem;
+  padding:7px 12px; border-radius:var(--radius-sm);
+  border:1px solid var(--border2); background:var(--surface);
+  color:var(--text2); cursor:pointer; outline:none;
+}
+
+/* ── Disclaimer ── */
+.disclaimer {
+  background:var(--amber-light); border:1px solid #FCD34D;
+  border-radius:var(--radius-sm); padding:10px 16px;
+  font-size:.72rem; color:var(--amber); margin-bottom:20px;
+  display:flex; align-items:center; gap:8px;
+}
+
+/* ── Grid ── */
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; }
+
+/* ── Card ── */
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:24px;
+  box-shadow:var(--shadow-sm);
+  transition:transform .2s, box-shadow .2s, border-color .2s;
+  position:relative; overflow:hidden;
+  animation:fadeUp .35s ease both;
+}
+.card::after {
+  content:'';
+  position:absolute; left:0; top:0; bottom:0; width:3px;
+  background:var(--c-accent, var(--accent));
+  border-radius:3px 0 0 3px;
+  opacity:.8;
+}
+.card:hover {
+  transform:translateY(-3px);
+  box-shadow:var(--shadow-lg);
+  border-color:var(--c-accent, var(--accent));
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+.card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
+.proto-id { display:flex; align-items:center; gap:10px; }
+.proto-icon {
+  width:40px; height:40px; border-radius:10px;
+  background:var(--surface2); display:flex; align-items:center;
+  justify-content:center; font-size:1.3rem; flex-shrink:0;
+  border:1px solid var(--border);
+}
+.proto-name { font-weight:600; font-size:.95rem; color:var(--text); }
+.proto-chain { font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); margin-top:2px; }
+
+.badges { display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
+.cat-badge {
+  font-family:'DM Mono',monospace; font-size:.58rem; font-weight:500;
+  padding:3px 9px; border-radius:999px;
+  background:var(--surface2); color:var(--text2);
+  border:1px solid var(--border); white-space:nowrap;
+}
+.risk-badge {
+  font-family:'DM Mono',monospace; font-size:.58rem; font-weight:500;
+  padding:3px 9px; border-radius:999px; white-space:nowrap;
+}
+.risk-low    { background:var(--green-light);  color:var(--green); }
+.risk-medium { background:var(--amber-light);  color:var(--amber); }
+.risk-high   { background:var(--red-light);    color:var(--red); }
+
+.apy-row { display:flex; align-items:flex-end; gap:10px; margin-bottom:14px; }
+.apy-main { font-family:'Playfair Display',serif; font-size:2.6rem; font-weight:700; line-height:1; color:var(--c-accent,var(--accent)); }
+.apy-meta { display:flex; flex-direction:column; gap:2px; padding-bottom:5px; }
+.apy-tag { font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.apy-split { font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); }
+
+.metrics { display:flex; gap:20px; padding:12px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:14px; }
+.metric { display:flex; flex-direction:column; gap:2px; }
+.metric-label { font-family:'DM Mono',monospace; font-size:.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; }
+.metric-value { font-family:'DM Mono',monospace; font-size:.78rem; color:var(--text); font-weight:500; }
+
+.description { font-size:.8rem; color:var(--text2); line-height:1.55; margin-bottom:16px; }
+
+.card-bottom { display:flex; justify-content:space-between; align-items:center; }
+.visit-link {
+  display:inline-flex; align-items:center; gap:5px;
+  font-family:'DM Mono',monospace; font-size:.65rem; font-weight:500;
+  padding:7px 14px; border-radius:var(--radius-sm);
+  background:var(--c-accent,var(--accent)); color:#fff;
+  text-decoration:none; transition:opacity .15s;
+}
+.visit-link:hover { opacity:.85; }
+.visit-link svg { width:10px; height:10px; }
+.strat-tag {
+  font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted);
+  background:var(--surface2); padding:4px 9px;
+  border-radius:var(--radius-sm); border:1px solid var(--border);
+}
+
+/* ── Empty state ── */
+.empty { text-align:center; padding:60px 20px; color:var(--muted); font-size:.85rem; display:none; }
+
+/* ── Footer ── */
+.footer {
+  margin-top:48px; padding-top:24px; border-top:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+}
+.footer p { font-family:'DM Mono',monospace; font-size:.63rem; color:var(--muted); }
+.footer a { color:var(--accent); text-decoration:none; }
+
+/* ── Responsive ── */
+@media(max-width:640px) {
+  .page { padding:0 16px 48px; }
+  .header { padding:32px 0 28px; }
+  .header-inner { flex-direction:column; }
+  .update-block { align-items:flex-start; width:100%; }
+  .toolbar { flex-direction:column; align-items:stretch; }
+  .controls { flex-direction:column; }
+  .search-wrap input { width:100%; }
+  .search-wrap input:focus { width:100%; }
+  .grid { grid-template-columns:1fr; }
+  .apy-main { font-size:2rem; }
+}
 </style>
 </head>
 <body>
-<div class="wrapper">
-  <header>
-    <div class="header-top">
-      <div class="logo-area">
-        <h1>DEFI <span>YIELD</span> RADAR</h1>
-        <p>// MISE À JOUR AUTOMATIQUE CHAQUE LUNDI · DEFILLAMA</p>
+<div class="page">
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <h1>DeFi <em>Yield</em> Radar</h1>
+        <p class="brand-sub">// 14 protocoles · données DeFiLlama</p>
       </div>
-      <div class="update-badge">
+      <div class="update-block">
         <span class="update-label">Dernière mise à jour</span>
-        <span class="update-date">13 April 2026 à 10:00 UTC</span>
-        <span class="update-next">↻ Prochaine mise à jour : lundi 8h UTC</span>
+        <span class="update-date">19 April 2026 · 17:15 UTC</span>
+        <span class="update-next">↻ lundi prochain · 08:00 UTC</span>
       </div>
-    </div>
-    <div class="stats-bar">
-      <div class="stat"><span class="stat-value">10</span><span class="stat-label">Protocoles</span></div>
-      <div class="stat"><span class="stat-value">18.7%</span><span class="stat-label">APY Max</span></div>
-      <div class="stat"><span class="stat-value">2.6%</span><span class="stat-label">APY Médian</span></div>
     </div>
   </header>
 
-  <div class="filters" id="filters">
-    <button class="filter-btn active" data-filter="all">Tous</button>
-    <button class="filter-btn" data-filter="Lending">Lending</button>
-    <button class="filter-btn" data-filter="Liquidity">Liquidité</button>
-    <button class="filter-btn" data-filter="Staking">Staking</button>
-    <button class="filter-btn" data-filter="CDP">CDP</button>
-    <button class="filter-btn" data-filter="Yield">Yield Agg.</button>
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-value">14</div>
+      <div class="stat-label">Protocoles</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">17.3%</div>
+      <div class="stat-label">APY Max</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">3.5%</div>
+      <div class="stat-label">APY Médian</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">5.6%</div>
+      <div class="stat-label">APY Moyen</div>
+    </div>
   </div>
 
-  <div class="disclaimer">⚠ APY générés chaque lundi depuis DeFiLlama. Ils varient constamment. Ce dashboard n'est pas un conseil financier — DYOR.</div>
-
-  <div class="protocols-grid" id="grid">
-    
-        <div class="card" style="--card-accent:#b6509e;animation-delay:0ms" data-category="Lending">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:#b6509e22">👻</div>
-              <div>
-                <div class="protocol-name">Aave v3</div>
-                <div class="protocol-chain">Ethereum</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:#4287f5;border-color:#4287f544">Lending</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">2.3%</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value risk-low"><span class="risk-dot"></span>Faible</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">$787M</span>
-            </div>
-          </div>
-          <p class="description">Leader du lending décentralisé. Déposez USDC/USDT et percevez des intérêts sur la plateforme la plus auditée du marché.</p>
-          <div class="card-footer">
-            <a href="https://app.aave.com" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">USDC supply</span>
-          </div>
-        </div>
-        <div class="card" style="--card-accent:#4287f5;animation-delay:60ms" data-category="Lending">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:#4287f522">🦋</div>
-              <div>
-                <div class="protocol-name">Morpho</div>
-                <div class="protocol-chain">Ethereum</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:#4287f5;border-color:#4287f544">Lending</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">2.2%</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value risk-low"><span class="risk-dot"></span>Faible</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">$195M</span>
-            </div>
-          </div>
-          <p class="description">Protocole peer-to-peer optimisant les taux d'Aave. Meilleurs rendements pour les déposants USDC/USDT.</p>
-          <div class="card-footer">
-            <a href="https://morpho.org" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">USDC Vault</span>
-          </div>
-        </div>
-        <div class="card" style="--card-accent:#00a3ff;animation-delay:120ms" data-category="Staking">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:#00a3ff22">🌊</div>
-              <div>
-                <div class="protocol-name">Lido</div>
-                <div class="protocol-chain">Ethereum</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:#00a3ff;border-color:#00a3ff44">Staking</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">2.4%</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value risk-low"><span class="risk-dot"></span>Faible</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">$20.6B</span>
-            </div>
-          </div>
-          <p class="description">Leader du liquid staking ETH. Stakez de l'ETH et recevez du stETH utilisable partout dans l'écosystème DeFi.</p>
-          <div class="card-footer">
-            <a href="https://lido.fi" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">ETH → stETH</span>
-          </div>
-        </div>
-        <div class="card" style="--card-accent:#3a65b6;animation-delay:180ms" data-category="Liquidity">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:#3a65b622">🔵</div>
-              <div>
-                <div class="protocol-name">Curve Finance</div>
-                <div class="protocol-chain">Ethereum</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:#ff007a;border-color:#ff007a44">Liquidity</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">0.1%</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              <span class="apy-sub">Base 0.1% + Rewards 0.0%</span>
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value risk-low"><span class="risk-dot"></span>Faible</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">$12M</span>
-            </div>
-          </div>
-          <p class="description">Référence des pools stablecoins. Frais de swap minimes et rendements solides sur le 3pool et tricrypto.</p>
-          <div class="card-footer">
-            <a href="https://curve.fi" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">3pool</span>
-          </div>
-        </div>
-        <div class="card" style="--card-accent:#ff007a;animation-delay:240ms" data-category="Liquidity">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:#ff007a22">🦄</div>
-              <div>
-                <div class="protocol-name">Uniswap v3</div>
-                <div class="protocol-chain">Ethereum</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:#ff007a;border-color:#ff007a44">Liquidity</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">18.7%</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value risk-medium"><span class="risk-dot"></span>Modéré</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">$99M</span>
-            </div>
-          </div>
-          <p class="description">DEX de référence. Les positions concentrées USDC/ETH 0.05% offrent des rendements élevés pour les LPs actifs.</p>
-          <div class="card-footer">
-            <a href="https://app.uniswap.org" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">USDC/ETH 0.05%</span>
-          </div>
-        </div>
-        <div class="card" style="--card-accent:#0dc8c8;animation-delay:300ms" data-category="Yield">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:#0dc8c822">📐</div>
-              <div>
-                <div class="protocol-name">Pendle Finance</div>
-                <div class="protocol-chain">Ethereum</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:#7fff6e;border-color:#7fff6e44">Yield</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">2.6%</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value risk-medium"><span class="risk-dot"></span>Modéré</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">$2M</span>
-            </div>
-          </div>
-          <p class="description">Tokenisation innovante du yield. PT pour taux fixe garanti, YT pour maximiser le rendement variable sur actifs porteurs d'intérêt.</p>
-          <div class="card-footer">
-            <a href="https://www.pendle.finance" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">PT eETH</span>
-          </div>
-        </div>
-        <div class="card" style="--card-accent:#ff6b00;animation-delay:360ms" data-category="Yield">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:#ff6b0022">⚡</div>
-              <div>
-                <div class="protocol-name">Convex Finance</div>
-                <div class="protocol-chain">Ethereum</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:#7fff6e;border-color:#7fff6e44">Yield</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">15.6%</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value risk-medium"><span class="risk-dot"></span>Modéré</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">$31M</span>
-            </div>
-          </div>
-          <p class="description">Boost des rendements Curve sans immobiliser de CRV. Maximise les récompenses des pools Curve en empilant les rewards cvxCRV.</p>
-          <div class="card-footer">
-            <a href="https://www.convexfinance.com" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">cvxCRV staking</span>
-          </div>
-        </div>
-        <div class="card" style="--card-accent:#00e5ff;animation-delay:420ms" data-category="CDP">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:#00e5ff22">🔷</div>
-              <div>
-                <div class="protocol-name">Ethena</div>
-                <div class="protocol-chain">Ethereum</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:#00e5ff;border-color:#00e5ff44">CDP</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">3.6%</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value risk-medium"><span class="risk-dot"></span>Modéré</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">$3.4B</span>
-            </div>
-          </div>
-          <p class="description">Stablecoin USDe adossé à des positions delta-neutres. Le sUSDe génère du rendement via le funding rate des marchés perpétuels.</p>
-          <div class="card-footer">
-            <a href="https://www.ethena.fi" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">sUSDe staking</span>
-          </div>
-        </div>
-        <div class="card" style="--card-accent:#9945ff;animation-delay:480ms" data-category="Yield">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:#9945ff22">🌀</div>
-              <div>
-                <div class="protocol-name">Kamino</div>
-                <div class="protocol-chain">Solana</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:#7fff6e;border-color:#7fff6e44">Yield</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">0.4%</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value risk-medium"><span class="risk-dot"></span>Modéré</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">$25M</span>
-            </div>
-          </div>
-          <p class="description">Yield automatisé sur Solana. Liquidités concentrées sur Orca/Raydium avec rebalancing automatique des fourchettes de prix.</p>
-          <div class="card-footer">
-            <a href="https://kamino.finance" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">USDC-SOL vault</span>
-          </div>
-        </div>
-        <div class="card" style="--card-accent:#006ae3;animation-delay:540ms" data-category="Yield">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:#006ae322">🏦</div>
-              <div>
-                <div class="protocol-name">Yearn Finance</div>
-                <div class="protocol-chain">Ethereum</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:#7fff6e;border-color:#7fff6e44">Yield</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">3.4%</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value risk-low"><span class="risk-dot"></span>Faible</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">$28M</span>
-            </div>
-          </div>
-          <p class="description">Vaults automatisés optimisant en continu les stratégies de rendement. Idéal pour du yield passif sans gestion active.</p>
-          <div class="card-footer">
-            <a href="https://yearn.fi" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">yvUSDC vault</span>
-          </div>
-        </div>
+  <div class="toolbar">
+    <div class="filters" id="filters">
+      <button class="filter-btn active" data-filter="all">Tous</button>
+      <button class="filter-btn" data-filter="Lending">Lending</button>
+      <button class="filter-btn" data-filter="Staking">Staking</button>
+      <button class="filter-btn" data-filter="Liquidity">Liquidité</button>
+      <button class="filter-btn" data-filter="Yield">Yield Agg.</button>
+      <button class="filter-btn" data-filter="CDP">CDP</button>
+    </div>
+    <div class="controls">
+      <div class="search-wrap">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="9" cy="9" r="6"/><path d="m15 15 3 3"/>
+        </svg>
+        <input type="text" id="search" placeholder="Rechercher…">
+      </div>
+      <select class="sort-select" id="sort">
+        <option value="apy_desc">APY ↓</option>
+        <option value="apy_asc">APY ↑</option>
+        <option value="tvl_desc">TVL ↓</option>
+        <option value="risk_asc">Risque ↑</option>
+        <option value="name_asc">Nom A→Z</option>
+      </select>
+    </div>
   </div>
 
-  <footer>
-    <p>Données : <a href="https://defillama.com/yields" target="_blank">DeFiLlama</a> · Généré le 13 April 2026 à 10:00 UTC</p>
+  <div class="disclaimer">
+    ⚠️ Les APY sont indicatifs et varient constamment. Ce dashboard n'est pas un conseil financier — DYOR.
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty">Aucun protocole ne correspond à votre recherche.</div>
+
+  <footer class="footer">
+    <p>Données : <a href="https://defillama.com/yields" target="_blank">DeFiLlama API</a> · Généré le 19 April 2026 · 17:15 UTC</p>
     <p>Automatisé via <a href="https://github.com/features/actions" target="_blank">GitHub Actions</a> · Hébergé sur GitHub Pages</p>
   </footer>
 </div>
+
 <script>
-  document.getElementById('filters').addEventListener('click', e => {
-    const btn = e.target.closest('.filter-btn');
-    if (!btn) return;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const f = btn.dataset.filter;
-    document.querySelectorAll('.card').forEach(c => {
-      c.style.display = (f === 'all' || c.dataset.category === f) ? '' : 'none';
-    });
+const DATA = [{"name": "Aave v3", "icon": "👻", "chain": "Ethereum", "category": "Lending", "risk": "low", "risk_score": 1, "description": "Le protocole de lending le plus audité du marché. Déposez USDC/USDT contre intérêts ou empruntez contre collatéral.", "strategy": "USDC supply", "url": "https://app.aave.com", "accent": "#B6509E", "apy": 3.43484, "apy_fmt": "3.4%", "tvl": 2961926.0, "tvl_fmt": "$3M", "apy_base": 3.4, "apy_reward": null}, {"name": "Morpho", "icon": "🦋", "chain": "Ethereum", "category": "Lending", "risk": "low", "risk_score": 1, "description": "Lending peer-to-peer optimisant les taux d'Aave. Meilleurs rendements pour les déposants sans sacrifice de sécurité.", "strategy": "USDC Vault", "url": "https://morpho.org", "accent": "#4287F5", "apy": 3.53391, "apy_fmt": "3.5%", "tvl": 180994867.0, "tvl_fmt": "$181M", "apy_base": 3.5, "apy_reward": null}, {"name": "Compound v3", "icon": "🏛", "chain": "Ethereum", "category": "Lending", "risk": "low", "risk_score": 1, "description": "Protocole de lending pionnier, entièrement réécrit en v3. Architecture isolée par actif pour une sécurité maximale.", "strategy": "USDC supply", "url": "https://app.compound.finance", "accent": "#00D395", "apy": 2.654, "apy_fmt": "2.7%", "tvl": 113717352.0, "tvl_fmt": "$114M", "apy_base": 2.5, "apy_reward": 0.1}, {"name": "Lido", "icon": "🌊", "chain": "Ethereum", "category": "Staking", "risk": "low", "risk_score": 1, "description": "Leader du liquid staking ETH. Stakez de l'ETH et recevez du stETH utilisable dans tout l'écosystème DeFi.", "strategy": "ETH → stETH", "url": "https://lido.fi", "accent": "#00A3FF", "apy": 2.665, "apy_fmt": "2.7%", "tvl": 21946538129.0, "tvl_fmt": "$21.9B", "apy_base": 2.7, "apy_reward": null}, {"name": "Rocket Pool", "icon": "🚀", "chain": "Ethereum", "category": "Staking", "risk": "low", "risk_score": 1, "description": "Alternative décentralisée à Lido. Staking ETH via rETH avec des node operators indépendants pour plus de décentralisation.", "strategy": "ETH → rETH", "url": "https://rocketpool.net", "accent": "#FF7B39", "apy": 2.06391, "apy_fmt": "2.1%", "tvl": 3154630255.0, "tvl_fmt": "$3.2B", "apy_base": 2.1, "apy_reward": null}, {"name": "Curve Finance", "icon": "🔵", "chain": "Ethereum", "category": "Liquidity", "risk": "low", "risk_score": 2, "description": "Référence des pools stablecoins. Slippage minimal et rendements solides sur le 3pool et tricrypto.", "strategy": "3pool", "url": "https://curve.fi", "accent": "#3A65B6", "apy": 0.02443, "apy_fmt": "0.0%", "tvl": 11919762.0, "tvl_fmt": "$12M", "apy_base": 0.0, "apy_reward": 0.0}, {"name": "Uniswap v3", "icon": "🦄", "chain": "Ethereum", "category": "Liquidity", "risk": "medium", "risk_score": 2, "description": "DEX de référence. Les positions concentrées USDC/ETH 0.05% génèrent des frais élevés pour les LPs actifs.", "strategy": "USDC/ETH 0.05%", "url": "https://app.uniswap.org", "accent": "#FF007A", "apy": 11.73714, "apy_fmt": "11.7%", "tvl": 100284673.0, "tvl_fmt": "$100M", "apy_base": 11.7, "apy_reward": null}, {"name": "Aerodrome", "icon": "✈️", "chain": "Base", "category": "Liquidity", "risk": "medium", "risk_score": 2, "description": "DEX dominant sur Base (Coinbase L2). Rendements élevés sur les pools ve(3,3) avec des volumes en forte croissance.", "strategy": "USDC/ETH pool", "url": "https://aerodrome.finance", "accent": "#0052FF", "apy": 17.34471, "apy_fmt": "17.3%", "tvl": 24807689.0, "tvl_fmt": "$25M", "apy_base": null, "apy_reward": 17.3}, {"name": "Pendle Finance", "icon": "📐", "chain": "Ethereum", "category": "Yield", "risk": "medium", "risk_score": 2, "description": "Tokenisation innovante du yield. PT pour taux fixe garanti, YT pour maximiser le rendement variable.", "strategy": "PT eETH", "url": "https://www.pendle.finance", "accent": "#0DC8C8", "apy": 2.80676, "apy_fmt": "2.8%", "tvl": 1639975.0, "tvl_fmt": "$2M", "apy_base": 2.8, "apy_reward": null}, {"name": "Convex Finance", "icon": "⚡", "chain": "Ethereum", "category": "Yield", "risk": "medium", "risk_score": 2, "description": "Boost des rendements Curve sans immobiliser de CRV. Empile les rewards cvxCRV pour maximiser les pools Curve.", "strategy": "cvxCRV staking", "url": "https://www.convexfinance.com", "accent": "#FF6B00", "apy": 16.81, "apy_fmt": "16.8%", "tvl": 32164586.0, "tvl_fmt": "$32M", "apy_base": null, "apy_reward": 16.8}, {"name": "Yearn Finance", "icon": "🏦", "chain": "Ethereum", "category": "Yield", "risk": "low", "risk_score": 1, "description": "Vaults automatisés optimisant en continu les stratégies de rendement. Yield passif sans gestion active.", "strategy": "yvUSDC vault", "url": "https://yearn.fi", "accent": "#006AE3", "apy": 3.52387, "apy_fmt": "3.5%", "tvl": 28228486.0, "tvl_fmt": "$28M", "apy_base": 3.5, "apy_reward": null}, {"name": "Kamino", "icon": "🌀", "chain": "Solana", "category": "Yield", "risk": "medium", "risk_score": 2, "description": "Yield automatisé sur Solana. Liquidités concentrées avec rebalancing automatique sur Orca et Raydium.", "strategy": "USDC-SOL vault", "url": "https://kamino.finance", "accent": "#9945FF", "apy": 3.84588, "apy_fmt": "3.8%", "tvl": 25254250.0, "tvl_fmt": "$25M", "apy_base": 3.8, "apy_reward": null}, {"name": "Ethena", "icon": "🔷", "chain": "Ethereum", "category": "CDP", "risk": "medium", "risk_score": 2, "description": "Stablecoin USDe adossé à des positions delta-neutres. Le sUSDe génère du yield via le funding rate des perps.", "strategy": "sUSDe staking", "url": "https://www.ethena.fi", "accent": "#00E5FF", "apy": 3.80641, "apy_fmt": "3.8%", "tvl": 3406284821.0, "tvl_fmt": "$3.4B", "apy_base": 3.8, "apy_reward": null}, {"name": "Sky (ex-MakerDAO)", "icon": "🌤", "chain": "Ethereum", "category": "CDP", "risk": "low", "risk_score": 1, "description": "Pionnier des stablecoins décentralisés. Le DAI/USDS via le Sky Savings Rate offre un rendement stable et sûr.", "strategy": "USDS Savings Rate", "url": "https://sky.money", "accent": "#1AAB9B", "apy": 3.75, "apy_fmt": "3.8%", "tvl": 5890848023.0, "tvl_fmt": "$5.9B", "apy_base": null, "apy_reward": null}];
+
+const RISK_LABEL = { low:'Faible', medium:'Modéré', high:'Élevé' };
+
+function card(d, delay) {
+  const sub = (d.apy_base && d.apy_reward)
+    ? `<span class="apy-split">Base ${d.apy_base}% + Rewards ${d.apy_reward}%</span>` : '';
+  return `
+  <div class="card" style="--c-accent:${d.accent};animation-delay:${delay}ms" data-cat="${d.category}" data-name="${d.name.toLowerCase()}">
+    <div class="card-top">
+      <div class="proto-id">
+        <div class="proto-icon">${d.icon}</div>
+        <div>
+          <div class="proto-name">${d.name}</div>
+          <div class="proto-chain">${d.chain}</div>
+        </div>
+      </div>
+      <div class="badges">
+        <span class="cat-badge">${d.category}</span>
+        <span class="risk-badge risk-${d.risk}">${RISK_LABEL[d.risk]}</span>
+      </div>
+    </div>
+    <div class="apy-row">
+      <div class="apy-main">${d.apy_fmt}</div>
+      <div class="apy-meta">
+        <span class="apy-tag">APY / an</span>
+        ${sub}
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <span class="metric-label">TVL</span>
+        <span class="metric-value">${d.tvl_fmt}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Stratégie</span>
+        <span class="metric-value">${d.strategy}</span>
+      </div>
+    </div>
+    <p class="description">${d.description}</p>
+    <div class="card-bottom">
+      <a href="${d.url}" target="_blank" rel="noopener" class="visit-link" style="background:${d.accent}">
+        Accéder
+        <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8L8 2M5 2h3v3"/></svg>
+      </a>
+    </div>
+  </div>`;
+}
+
+let activeFilter = 'all';
+let searchQ = '';
+let sortKey = 'apy_desc';
+
+function sorted(arr) {
+  return [...arr].sort((a,b) => {
+    if (sortKey === 'apy_desc')  return b.apy - a.apy;
+    if (sortKey === 'apy_asc')   return a.apy - b.apy;
+    if (sortKey === 'tvl_desc')  return b.tvl - a.tvl;
+    if (sortKey === 'risk_asc')  return a.risk_score - b.risk_score;
+    if (sortKey === 'name_asc')  return a.name.localeCompare(b.name);
+    return 0;
   });
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  let items = DATA.filter(d => {
+    const catOk  = activeFilter === 'all' || d.category === activeFilter;
+    const nameOk = d.name.toLowerCase().includes(searchQ) || d.description.toLowerCase().includes(searchQ);
+    return catOk && nameOk;
+  });
+  items = sorted(items);
+  if (!items.length) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    grid.innerHTML = items.map((d,i) => card(d, i*50)).join('');
+  }
+}
+
+document.getElementById('filters').addEventListener('click', e => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = btn.dataset.filter;
+  render();
+});
+
+document.getElementById('search').addEventListener('input', e => {
+  searchQ = e.target.value.toLowerCase().trim();
+  render();
+});
+
+document.getElementById('sort').addEventListener('change', e => {
+  sortKey = e.target.value;
+  render();
+});
+
+render();
 </script>
 </body>
 </html>
