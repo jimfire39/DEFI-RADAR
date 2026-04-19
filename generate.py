@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
+DeFi APY Radar — generate.py
 Fetches live APY data from DeFiLlama and generates a static HTML dashboard.
-Run locally or via GitHub Actions every Monday.
+Runs every Monday via GitHub Actions.
 """
 
 import requests
@@ -9,18 +10,111 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-# ─── Protocol definitions ────────────────────────────────────────────────────
+# ─── Protocol definitions ─────────────────────────────────────────────────────
 PROTOCOLS = [
-    { "name": "Aave v3",        "icon": "👻", "iconBg": "#b6509e22", "chain": "Ethereum", "category": "Lending",   "risk": "low",    "description": "Leader du lending décentralisé. Déposez USDC/USDT et percevez des intérêts sur la plateforme la plus auditée du marché.",               "strategy": "USDC supply",    "url": "https://app.aave.com",          "accent": "#b6509e", "project": "aave-v3",           "symbol": "USDC",   "search_chain": "Ethereum" },
-    { "name": "Morpho",         "icon": "🦋", "iconBg": "#4287f522", "chain": "Ethereum", "category": "Lending",   "risk": "low",    "description": "Protocole peer-to-peer optimisant les taux d'Aave. Meilleurs rendements pour les déposants USDC/USDT.",                             "strategy": "USDC Vault",     "url": "https://morpho.org",            "accent": "#4287f5", "project": "morpho",            "symbol": "USDC",   "search_chain": "Ethereum" },
-    { "name": "Lido",           "icon": "🌊", "iconBg": "#00a3ff22", "chain": "Ethereum", "category": "Staking",   "risk": "low",    "description": "Leader du liquid staking ETH. Stakez de l'ETH et recevez du stETH utilisable partout dans l'écosystème DeFi.",                      "strategy": "ETH → stETH",    "url": "https://lido.fi",               "accent": "#00a3ff", "project": "lido",              "symbol": "STETH",  "search_chain": "Ethereum" },
-    { "name": "Curve Finance",  "icon": "🔵", "iconBg": "#3a65b622", "chain": "Ethereum", "category": "Liquidity", "risk": "low",    "description": "Référence des pools stablecoins. Frais de swap minimes et rendements solides sur le 3pool et tricrypto.",                           "strategy": "3pool",          "url": "https://curve.fi",              "accent": "#3a65b6", "project": "curve-dex",         "symbol": "3CRV",   "search_chain": "Ethereum" },
-    { "name": "Uniswap v3",     "icon": "🦄", "iconBg": "#ff007a22", "chain": "Ethereum", "category": "Liquidity", "risk": "medium", "description": "DEX de référence. Les positions concentrées USDC/ETH 0.05% offrent des rendements élevés pour les LPs actifs.",                  "strategy": "USDC/ETH 0.05%", "url": "https://app.uniswap.org",       "accent": "#ff007a", "project": "uniswap-v3",        "symbol": "USDC",   "search_chain": "Ethereum" },
-    { "name": "Pendle Finance", "icon": "📐", "iconBg": "#0dc8c822", "chain": "Ethereum", "category": "Yield",     "risk": "medium", "description": "Tokenisation innovante du yield. PT pour taux fixe garanti, YT pour maximiser le rendement variable sur actifs porteurs d'intérêt.", "strategy": "PT eETH",        "url": "https://www.pendle.finance",    "accent": "#0dc8c8", "project": "pendle",            "symbol": "EETH",   "search_chain": "Ethereum" },
-    { "name": "Convex Finance", "icon": "⚡", "iconBg": "#ff6b0022", "chain": "Ethereum", "category": "Yield",     "risk": "medium", "description": "Boost des rendements Curve sans immobiliser de CRV. Maximise les récompenses des pools Curve en empilant les rewards cvxCRV.",    "strategy": "cvxCRV staking", "url": "https://www.convexfinance.com", "accent": "#ff6b00", "project": "convex-finance",    "symbol": "CVXCRV", "search_chain": "Ethereum" },
-    { "name": "Ethena",         "icon": "🔷", "iconBg": "#00e5ff22", "chain": "Ethereum", "category": "CDP",       "risk": "medium", "description": "Stablecoin USDe adossé à des positions delta-neutres. Le sUSDe génère du rendement via le funding rate des marchés perpétuels.", "strategy": "sUSDe staking",  "url": "https://www.ethena.fi",         "accent": "#00e5ff", "project": "ethena",            "symbol": "SUSDE",  "search_chain": "Ethereum" },
-    { "name": "Kamino",         "icon": "🌀", "iconBg": "#9945ff22", "chain": "Solana",   "category": "Yield",     "risk": "medium", "description": "Yield automatisé sur Solana. Liquidités concentrées sur Orca/Raydium avec rebalancing automatique des fourchettes de prix.",       "strategy": "USDC-SOL vault", "url": "https://kamino.finance",        "accent": "#9945ff", "project": "kamino-liquidity",  "symbol": "USDC",   "search_chain": "Solana" },
-    { "name": "Yearn Finance",  "icon": "🏦", "iconBg": "#006ae322", "chain": "Ethereum", "category": "Yield",     "risk": "low",    "description": "Vaults automatisés optimisant en continu les stratégies de rendement. Idéal pour du yield passif sans gestion active.",            "strategy": "yvUSDC vault",   "url": "https://yearn.fi",              "accent": "#006ae3", "project": "yearn-finance",     "symbol": "YVUSDC", "search_chain": "Ethereum" },
+    # ── Lending ──────────────────────────────────────────────────────────────
+    {
+        "name": "Aave v3", "icon": "👻", "chain": "Ethereum", "category": "Lending",
+        "risk": "low", "risk_score": 1,
+        "description": "Le protocole de lending le plus audité du marché. Déposez USDC/USDT contre intérêts ou empruntez contre collatéral.",
+        "strategy": "USDC supply", "url": "https://app.aave.com", "accent": "#B6509E",
+        "project": "aave-v3", "symbol": "USDC", "search_chain": "Ethereum"
+    },
+    {
+        "name": "Morpho", "icon": "🦋", "chain": "Ethereum", "category": "Lending",
+        "risk": "low", "risk_score": 1,
+        "description": "Lending peer-to-peer optimisant les taux d'Aave. Meilleurs rendements pour les déposants sans sacrifice de sécurité.",
+        "strategy": "USDC Vault", "url": "https://morpho.org", "accent": "#4287F5",
+        "project": "morpho", "symbol": "USDC", "search_chain": "Ethereum"
+    },
+    {
+        "name": "Compound v3", "icon": "🏛", "chain": "Ethereum", "category": "Lending",
+        "risk": "low", "risk_score": 1,
+        "description": "Protocole de lending pionnier, entièrement réécrit en v3. Architecture isolée par actif pour une sécurité maximale.",
+        "strategy": "USDC supply", "url": "https://app.compound.finance", "accent": "#00D395",
+        "project": "compound-v3", "symbol": "USDC", "search_chain": "Ethereum"
+    },
+    # ── Staking ───────────────────────────────────────────────────────────────
+    {
+        "name": "Lido", "icon": "🌊", "chain": "Ethereum", "category": "Staking",
+        "risk": "low", "risk_score": 1,
+        "description": "Leader du liquid staking ETH. Stakez de l'ETH et recevez du stETH utilisable dans tout l'écosystème DeFi.",
+        "strategy": "ETH → stETH", "url": "https://lido.fi", "accent": "#00A3FF",
+        "project": "lido", "symbol": "STETH", "search_chain": "Ethereum"
+    },
+    {
+        "name": "Rocket Pool", "icon": "🚀", "chain": "Ethereum", "category": "Staking",
+        "risk": "low", "risk_score": 1,
+        "description": "Alternative décentralisée à Lido. Staking ETH via rETH avec des node operators indépendants pour plus de décentralisation.",
+        "strategy": "ETH → rETH", "url": "https://rocketpool.net", "accent": "#FF7B39",
+        "project": "rocket-pool", "symbol": "RETH", "search_chain": "Ethereum"
+    },
+    # ── Liquidity ─────────────────────────────────────────────────────────────
+    {
+        "name": "Curve Finance", "icon": "🔵", "chain": "Ethereum", "category": "Liquidity",
+        "risk": "low", "risk_score": 2,
+        "description": "Référence des pools stablecoins. Slippage minimal et rendements solides sur le 3pool et tricrypto.",
+        "strategy": "3pool", "url": "https://curve.fi", "accent": "#3A65B6",
+        "project": "curve-dex", "symbol": "3CRV", "search_chain": "Ethereum"
+    },
+    {
+        "name": "Uniswap v3", "icon": "🦄", "chain": "Ethereum", "category": "Liquidity",
+        "risk": "medium", "risk_score": 2,
+        "description": "DEX de référence. Les positions concentrées USDC/ETH 0.05% génèrent des frais élevés pour les LPs actifs.",
+        "strategy": "USDC/ETH 0.05%", "url": "https://app.uniswap.org", "accent": "#FF007A",
+        "project": "uniswap-v3", "symbol": "USDC", "search_chain": "Ethereum"
+    },
+    {
+        "name": "Aerodrome", "icon": "✈️", "chain": "Base", "category": "Liquidity",
+        "risk": "medium", "risk_score": 2,
+        "description": "DEX dominant sur Base (Coinbase L2). Rendements élevés sur les pools ve(3,3) avec des volumes en forte croissance.",
+        "strategy": "USDC/ETH pool", "url": "https://aerodrome.finance", "accent": "#0052FF",
+        "project": "aerodrome-v1", "symbol": "USDC", "search_chain": "Base"
+    },
+    # ── Yield Aggregators ─────────────────────────────────────────────────────
+    {
+        "name": "Pendle Finance", "icon": "📐", "chain": "Ethereum", "category": "Yield",
+        "risk": "medium", "risk_score": 2,
+        "description": "Tokenisation innovante du yield. PT pour taux fixe garanti, YT pour maximiser le rendement variable.",
+        "strategy": "PT eETH", "url": "https://www.pendle.finance", "accent": "#0DC8C8",
+        "project": "pendle", "symbol": "EETH", "search_chain": "Ethereum"
+    },
+    {
+        "name": "Convex Finance", "icon": "⚡", "chain": "Ethereum", "category": "Yield",
+        "risk": "medium", "risk_score": 2,
+        "description": "Boost des rendements Curve sans immobiliser de CRV. Empile les rewards cvxCRV pour maximiser les pools Curve.",
+        "strategy": "cvxCRV staking", "url": "https://www.convexfinance.com", "accent": "#FF6B00",
+        "project": "convex-finance", "symbol": "CVXCRV", "search_chain": "Ethereum"
+    },
+    {
+        "name": "Yearn Finance", "icon": "🏦", "chain": "Ethereum", "category": "Yield",
+        "risk": "low", "risk_score": 1,
+        "description": "Vaults automatisés optimisant en continu les stratégies de rendement. Yield passif sans gestion active.",
+        "strategy": "yvUSDC vault", "url": "https://yearn.fi", "accent": "#006AE3",
+        "project": "yearn-finance", "symbol": "YVUSDC", "search_chain": "Ethereum"
+    },
+    {
+        "name": "Kamino", "icon": "🌀", "chain": "Solana", "category": "Yield",
+        "risk": "medium", "risk_score": 2,
+        "description": "Yield automatisé sur Solana. Liquidités concentrées avec rebalancing automatique sur Orca et Raydium.",
+        "strategy": "USDC-SOL vault", "url": "https://kamino.finance", "accent": "#9945FF",
+        "project": "kamino-liquidity", "symbol": "USDC", "search_chain": "Solana"
+    },
+    # ── CDP / Synthetics ──────────────────────────────────────────────────────
+    {
+        "name": "Ethena", "icon": "🔷", "chain": "Ethereum", "category": "CDP",
+        "risk": "medium", "risk_score": 2,
+        "description": "Stablecoin USDe adossé à des positions delta-neutres. Le sUSDe génère du yield via le funding rate des perps.",
+        "strategy": "sUSDe staking", "url": "https://www.ethena.fi", "accent": "#00E5FF",
+        "project": "ethena", "symbol": "SUSDE", "search_chain": "Ethereum"
+    },
+    {
+        "name": "Sky (ex-MakerDAO)", "icon": "🌤", "chain": "Ethereum", "category": "CDP",
+        "risk": "low", "risk_score": 1,
+        "description": "Pionnier des stablecoins décentralisés. Le DAI/USDS via le Sky Savings Rate offre un rendement stable et sûr.",
+        "strategy": "USDS Savings Rate", "url": "https://sky.money", "accent": "#1AAB9B",
+        "project": "sky", "symbol": "USDS", "search_chain": "Ethereum"
+    },
 ]
 
 def fetch_pools():
@@ -32,102 +126,79 @@ def fetch_pools():
     return pools
 
 def find_best_pool(pools, proto):
+    # Match by project slug + chain
     candidates = [
         p for p in pools
         if proto["project"].lower() in (p.get("project") or "").lower()
         and (p.get("chain") or "").lower() == proto["search_chain"].lower()
     ]
+    # Refine by symbol if possible
     sym = proto["symbol"].upper()
     exact = [p for p in candidates if sym in (p.get("symbol") or "").upper()]
     if exact:
         candidates = exact
+    # Sort by TVL desc
     candidates.sort(key=lambda p: p.get("tvlUsd") or 0, reverse=True)
     return candidates[0] if candidates else None
 
 def fmt_tvl(v):
-    if not v:
-        return "—"
-    if v >= 1e9:
-        return f"${v/1e9:.1f}B"
-    if v >= 1e6:
-        return f"${v/1e6:.0f}M"
+    if not v: return "—"
+    if v >= 1e9: return f"${v/1e9:.1f}B"
+    if v >= 1e6: return f"${v/1e6:.0f}M"
     return f"${v/1e3:.0f}K"
 
 def fmt_apy(v):
-    if v is None or (isinstance(v, float) and v != v):  # NaN check
+    if v is None: return "—"
+    try:
+        f = float(v)
+        if f != f: return "—"  # NaN
+        return f"{f:.1f}%"
+    except:
         return "—"
-    return f"{v:.1f}%"
 
 def build_html(results, generated_at):
-    cards_html = ""
-    for i, (proto, pool) in enumerate(results):
-        apy     = pool.get("apy")      if pool else None
-        tvl     = pool.get("tvlUsd")   if pool else None
-        apy_base   = pool.get("apyBase")   if pool else None
-        apy_reward = pool.get("apyReward") if pool else None
-
-        apy_display = fmt_apy(apy)
-        tvl_display = fmt_tvl(tvl)
-        sub_line = ""
-        if apy_base and apy_reward and apy_base > 0 and apy_reward > 0:
-            sub_line = f'<span class="apy-sub">Base {apy_base:.1f}% + Rewards {apy_reward:.1f}%</span>'
-
-        risk_map = {
-            "low":    ("Faible",  "risk-low"),
-            "medium": ("Modéré", "risk-medium"),
-            "high":   ("Élevé",  "risk-high"),
-        }
-        risk_label, risk_cls = risk_map.get(proto["risk"], ("—", ""))
-        cat_colors = { "Lending":"#4287f5","Liquidity":"#ff007a","Staking":"#00a3ff","CDP":"#00e5ff","Yield":"#7fff6e" }
-        cat_color = cat_colors.get(proto["category"], "#aaa")
-
-        delay = i * 60
-        cards_html += f"""
-        <div class="card" style="--card-accent:{proto['accent']};animation-delay:{delay}ms" data-category="{proto['category']}">
-          <div class="card-header">
-            <div class="protocol-info">
-              <div class="protocol-icon" style="background:{proto['iconBg']}">{proto['icon']}</div>
-              <div>
-                <div class="protocol-name">{proto['name']}</div>
-                <div class="protocol-chain">{proto['chain']}</div>
-              </div>
-            </div>
-            <span class="category-tag" style="color:{cat_color};border-color:{cat_color}44">{proto['category']}</span>
-          </div>
-          <div class="apy-section">
-            <div class="apy-value">{apy_display}</div>
-            <div class="apy-meta">
-              <span class="apy-label">APY / an</span>
-              {sub_line}
-            </div>
-          </div>
-          <div class="risk-tvl">
-            <div class="mini-stat">
-              <span class="mini-stat-label">Risque</span>
-              <span class="mini-stat-value {risk_cls}"><span class="risk-dot"></span>{risk_label}</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-stat-label">TVL</span>
-              <span class="mini-stat-value">{tvl_display}</span>
-            </div>
-          </div>
-          <p class="description">{proto['description']}</p>
-          <div class="card-footer">
-            <a href="{proto['url']}" target="_blank" rel="noopener" class="visit-btn">
-              Accéder
-              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8L8 2M5 2h3v3"/></svg>
-            </a>
-            <span class="strategy-tag">{proto['strategy']}</span>
-          </div>
-        </div>"""
+    date_fr = generated_at.strftime("%-d %B %Y · %H:%M UTC")
+    next_monday = "lundi prochain · 08:00 UTC"
 
     # Stats
     apys = [r[1].get("apy") for r in results if r[1] and r[1].get("apy") is not None]
-    apys_sorted = sorted(apys)
-    max_apy = f"{max(apys):.1f}%" if apys else "—"
+    apys_clean = [float(a) for a in apys if str(a) != 'nan']
+    apys_sorted = sorted(apys_clean)
+    max_apy    = f"{max(apys_clean):.1f}%" if apys_clean else "—"
     median_apy = f"{apys_sorted[len(apys_sorted)//2]:.1f}%" if apys_sorted else "—"
+    avg_apy    = f"{sum(apys_clean)/len(apys_clean):.1f}%" if apys_clean else "—"
 
-    date_fr = generated_at.strftime("%-d %B %Y à %H:%M UTC")
+    # Cards JSON for JS sorting/filtering
+    cards_data = []
+    for proto, pool in results:
+        apy        = pool.get("apy")       if pool else None
+        tvl        = pool.get("tvlUsd")    if pool else None
+        apy_base   = pool.get("apyBase")   if pool else None
+        apy_reward = pool.get("apyReward") if pool else None
+        try: apy_f = float(apy) if apy is not None else 0
+        except: apy_f = 0
+        try: tvl_f = float(tvl) if tvl is not None else 0
+        except: tvl_f = 0
+        cards_data.append({
+            "name":       proto["name"],
+            "icon":       proto["icon"],
+            "chain":      proto["chain"],
+            "category":   proto["category"],
+            "risk":       proto["risk"],
+            "risk_score": proto["risk_score"],
+            "description":proto["description"],
+            "strategy":   proto["strategy"],
+            "url":        proto["url"],
+            "accent":     proto["accent"],
+            "apy":        apy_f,
+            "apy_fmt":    fmt_apy(apy),
+            "tvl":        tvl_f,
+            "tvl_fmt":    fmt_tvl(tvl),
+            "apy_base":   round(float(apy_base),1) if apy_base else None,
+            "apy_reward": round(float(apy_reward),1) if apy_reward else None,
+        })
+
+    cards_json = json.dumps(cards_data, ensure_ascii=False)
 
     return f"""<!DOCTYPE html>
 <html lang="fr">
@@ -135,116 +206,414 @@ def build_html(results, generated_at):
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DeFi APY Radar</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {{ --bg:#080c10;--surface:#0e1520;--border:#1a2535;--accent:#00e5ff;--accent2:#7fff6e;--accent3:#ff6b35;--text:#e2eaf5;--muted:#5a7090;--card-hover:#111d2e; }}
-  *{{margin:0;padding:0;box-sizing:border-box;}}
-  body{{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}}
-  body::before{{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}}
-  .wrapper{{max-width:1100px;margin:0 auto;padding:0 24px;position:relative;z-index:1;}}
-  header{{padding:48px 0 32px;border-bottom:1px solid var(--border);}}
-  .header-top{{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;}}
-  .logo-area h1{{font-size:2.4rem;font-weight:800;letter-spacing:-1px;line-height:1;}}
-  .logo-area h1 span{{color:var(--accent);}}
-  .logo-area p{{font-family:'Space Mono',monospace;color:var(--muted);font-size:.75rem;margin-top:8px;}}
-  .update-badge{{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}}
-  .update-label{{font-family:'Space Mono',monospace;font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}}
-  .update-date{{font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent2);background:rgba(127,255,110,.08);border:1px solid rgba(127,255,110,.2);padding:5px 12px;border-radius:4px;}}
-  .update-next{{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);}}
-  .stats-bar{{display:flex;gap:32px;margin-top:24px;flex-wrap:wrap;}}
-  .stat{{display:flex;flex-direction:column;gap:2px;}}
-  .stat-value{{font-size:1.5rem;font-weight:800;color:var(--accent);}}
-  .stat-label{{font-family:'Space Mono',monospace;font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}}
-  .filters{{display:flex;gap:8px;margin:28px 0 16px;flex-wrap:wrap;}}
-  .filter-btn{{font-family:'Space Mono',monospace;font-size:.68rem;padding:6px 14px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;}}
-  .filter-btn:hover,.filter-btn.active{{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.05);}}
-  .disclaimer{{background:rgba(255,107,53,.06);border:1px solid rgba(255,107,53,.2);border-radius:6px;padding:10px 16px;margin-bottom:20px;font-family:'Space Mono',monospace;font-size:.63rem;color:var(--accent3);line-height:1.6;}}
-  .protocols-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:48px;}}
-  .card{{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;transition:all .2s;position:relative;overflow:hidden;animation:fadeIn .4s ease both;}}
-  .card::before{{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--card-accent,var(--accent));opacity:.7;}}
-  .card:hover{{background:var(--card-hover);border-color:var(--card-accent,var(--accent));transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.4);}}
-  @keyframes fadeIn{{from{{opacity:0;transform:translateY(12px)}}to{{opacity:1;transform:translateY(0)}}}}
-  .card-header{{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}}
-  .protocol-info{{display:flex;align-items:center;gap:10px;}}
-  .protocol-icon{{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}}
-  .protocol-name{{font-weight:800;font-size:1rem;}}
-  .protocol-chain{{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}}
-  .category-tag{{font-family:'Space Mono',monospace;font-size:.58rem;padding:3px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:.06em;border:1px solid currentColor;opacity:.7;white-space:nowrap;}}
-  .apy-section{{display:flex;align-items:flex-end;gap:8px;margin-bottom:14px;}}
-  .apy-value{{font-size:2.2rem;font-weight:800;line-height:1;color:var(--card-accent,var(--accent));}}
-  .apy-meta{{display:flex;flex-direction:column;gap:2px;margin-bottom:4px;}}
-  .apy-label{{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);}}
-  .apy-sub{{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);opacity:.8;}}
-  .risk-tvl{{display:flex;gap:16px;margin-bottom:14px;}}
-  .mini-stat{{display:flex;flex-direction:column;gap:2px;}}
-  .mini-stat-label{{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}}
-  .mini-stat-value{{font-family:'Space Mono',monospace;font-size:.75rem;}}
-  .risk-dot{{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle;}}
-  .risk-low{{color:var(--accent2);}} .risk-low .risk-dot{{background:var(--accent2);}}
-  .risk-medium{{color:#ffd166;}} .risk-medium .risk-dot{{background:#ffd166;}}
-  .description{{font-size:.77rem;color:var(--muted);line-height:1.5;margin-bottom:16px;}}
-  .card-footer{{display:flex;justify-content:space-between;align-items:center;}}
-  .visit-btn{{display:inline-flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:.66rem;padding:7px 14px;border-radius:4px;border:1px solid var(--card-accent,var(--accent));color:var(--card-accent,var(--accent));text-decoration:none;transition:all .15s;}}
-  .visit-btn:hover{{background:var(--card-accent,var(--accent));color:var(--bg);}}
-  .visit-btn svg{{width:10px;height:10px;}}
-  .strategy-tag{{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);background:rgba(255,255,255,.03);padding:3px 7px;border-radius:3px;}}
-  footer{{border-top:1px solid var(--border);padding:24px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}}
-  footer p{{font-family:'Space Mono',monospace;font-size:.63rem;color:var(--muted);}}
-  footer a{{color:var(--accent);text-decoration:none;}}
+:root {{
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface2: #F0F2F5;
+  --border: #E4E8EF;
+  --border2: #D0D7E3;
+  --text: #0F1724;
+  --text2: #4A5568;
+  --muted: #8896AA;
+  --accent: #0A4FD4;
+  --accent-light: #EBF0FF;
+  --green: #0D9B6B;
+  --green-light: #E6F7F2;
+  --amber: #D97706;
+  --amber-light: #FEF3C7;
+  --red: #DC2626;
+  --red-light: #FEE2E2;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow: 0 4px 16px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+  --radius: 12px;
+  --radius-sm: 7px;
+}}
+*, *::before, *::after {{ margin:0; padding:0; box-sizing:border-box; }}
+html {{ scroll-behavior: smooth; }}
+body {{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }}
+
+/* ── Layout ── */
+.page {{ max-width:1200px; margin:0 auto; padding:0 24px 64px; }}
+
+/* ── Header ── */
+.header {{
+  padding: 48px 0 40px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+}}
+.header-inner {{ display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:24px; }}
+.brand h1 {{
+  font-family:'Playfair Display',serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight:900;
+  letter-spacing:-1.5px;
+  line-height:1;
+  color:var(--text);
+}}
+.brand h1 em {{
+  font-style:normal;
+  color:var(--accent);
+}}
+.brand-sub {{
+  font-family:'DM Mono',monospace;
+  font-size:.72rem;
+  color:var(--muted);
+  margin-top:8px;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}}
+.update-block {{
+  display:flex; flex-direction:column; align-items:flex-end; gap:6px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:14px 18px;
+  box-shadow:var(--shadow-sm);
+}}
+.update-label {{ font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }}
+.update-date {{ font-family:'DM Mono',monospace; font-size:.8rem; color:var(--text); font-weight:500; }}
+.update-next {{ font-family:'DM Mono',monospace; font-size:.62rem; color:var(--accent); }}
+
+/* ── Stats bar ── */
+.stats-bar {{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:12px; margin-bottom:28px;
+}}
+.stat-card {{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px 20px;
+  box-shadow:var(--shadow-sm);
+}}
+.stat-value {{ font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--text); line-height:1; }}
+.stat-label {{ font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:4px; }}
+
+/* ── Toolbar ── */
+.toolbar {{
+  display:flex; justify-content:space-between; align-items:center;
+  flex-wrap:wrap; gap:12px; margin-bottom:20px;
+}}
+.filters {{ display:flex; gap:6px; flex-wrap:wrap; }}
+.filter-btn {{
+  font-family:'DM Mono',monospace; font-size:.68rem; font-weight:500;
+  padding:7px 14px; border-radius:999px;
+  border:1px solid var(--border2); background:var(--surface);
+  color:var(--text2); cursor:pointer; transition:all .15s;
+  letter-spacing:.02em;
+}}
+.filter-btn:hover {{ border-color:var(--accent); color:var(--accent); background:var(--accent-light); }}
+.filter-btn.active {{ background:var(--accent); color:#fff; border-color:var(--accent); }}
+
+.controls {{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }}
+.search-wrap {{ position:relative; }}
+.search-wrap input {{
+  font-family:'DM Sans',sans-serif; font-size:.82rem;
+  padding:7px 12px 7px 34px; border-radius:var(--radius-sm);
+  border:1px solid var(--border2); background:var(--surface);
+  color:var(--text); outline:none; width:180px; transition:all .15s;
+}}
+.search-wrap input:focus {{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(10,79,212,.1); width:220px; }}
+.search-wrap svg {{ position:absolute; left:10px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--muted); }}
+.sort-select {{
+  font-family:'DM Mono',monospace; font-size:.68rem;
+  padding:7px 12px; border-radius:var(--radius-sm);
+  border:1px solid var(--border2); background:var(--surface);
+  color:var(--text2); cursor:pointer; outline:none;
+}}
+
+/* ── Disclaimer ── */
+.disclaimer {{
+  background:var(--amber-light); border:1px solid #FCD34D;
+  border-radius:var(--radius-sm); padding:10px 16px;
+  font-size:.72rem; color:var(--amber); margin-bottom:20px;
+  display:flex; align-items:center; gap:8px;
+}}
+
+/* ── Grid ── */
+.grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; }}
+
+/* ── Card ── */
+.card {{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:24px;
+  box-shadow:var(--shadow-sm);
+  transition:transform .2s, box-shadow .2s, border-color .2s;
+  position:relative; overflow:hidden;
+  animation:fadeUp .35s ease both;
+}}
+.card::after {{
+  content:'';
+  position:absolute; left:0; top:0; bottom:0; width:3px;
+  background:var(--c-accent, var(--accent));
+  border-radius:3px 0 0 3px;
+  opacity:.8;
+}}
+.card:hover {{
+  transform:translateY(-3px);
+  box-shadow:var(--shadow-lg);
+  border-color:var(--c-accent, var(--accent));
+}}
+@keyframes fadeUp {{ from{{opacity:0;transform:translateY(16px)}} to{{opacity:1;transform:translateY(0)}} }}
+
+.card-top {{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }}
+.proto-id {{ display:flex; align-items:center; gap:10px; }}
+.proto-icon {{
+  width:40px; height:40px; border-radius:10px;
+  background:var(--surface2); display:flex; align-items:center;
+  justify-content:center; font-size:1.3rem; flex-shrink:0;
+  border:1px solid var(--border);
+}}
+.proto-name {{ font-weight:600; font-size:.95rem; color:var(--text); }}
+.proto-chain {{ font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); margin-top:2px; }}
+
+.badges {{ display:flex; flex-direction:column; align-items:flex-end; gap:5px; }}
+.cat-badge {{
+  font-family:'DM Mono',monospace; font-size:.58rem; font-weight:500;
+  padding:3px 9px; border-radius:999px;
+  background:var(--surface2); color:var(--text2);
+  border:1px solid var(--border); white-space:nowrap;
+}}
+.risk-badge {{
+  font-family:'DM Mono',monospace; font-size:.58rem; font-weight:500;
+  padding:3px 9px; border-radius:999px; white-space:nowrap;
+}}
+.risk-low    {{ background:var(--green-light);  color:var(--green); }}
+.risk-medium {{ background:var(--amber-light);  color:var(--amber); }}
+.risk-high   {{ background:var(--red-light);    color:var(--red); }}
+
+.apy-row {{ display:flex; align-items:flex-end; gap:10px; margin-bottom:14px; }}
+.apy-main {{ font-family:'Playfair Display',serif; font-size:2.6rem; font-weight:700; line-height:1; color:var(--c-accent,var(--accent)); }}
+.apy-meta {{ display:flex; flex-direction:column; gap:2px; padding-bottom:5px; }}
+.apy-tag {{ font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }}
+.apy-split {{ font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); }}
+
+.metrics {{ display:flex; gap:20px; padding:12px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:14px; }}
+.metric {{ display:flex; flex-direction:column; gap:2px; }}
+.metric-label {{ font-family:'DM Mono',monospace; font-size:.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; }}
+.metric-value {{ font-family:'DM Mono',monospace; font-size:.78rem; color:var(--text); font-weight:500; }}
+
+.description {{ font-size:.8rem; color:var(--text2); line-height:1.55; margin-bottom:16px; }}
+
+.card-bottom {{ display:flex; justify-content:space-between; align-items:center; }}
+.visit-link {{
+  display:inline-flex; align-items:center; gap:5px;
+  font-family:'DM Mono',monospace; font-size:.65rem; font-weight:500;
+  padding:7px 14px; border-radius:var(--radius-sm);
+  background:var(--c-accent,var(--accent)); color:#fff;
+  text-decoration:none; transition:opacity .15s;
+}}
+.visit-link:hover {{ opacity:.85; }}
+.visit-link svg {{ width:10px; height:10px; }}
+.strat-tag {{
+  font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted);
+  background:var(--surface2); padding:4px 9px;
+  border-radius:var(--radius-sm); border:1px solid var(--border);
+}}
+
+/* ── Empty state ── */
+.empty {{ text-align:center; padding:60px 20px; color:var(--muted); font-size:.85rem; display:none; }}
+
+/* ── Footer ── */
+.footer {{
+  margin-top:48px; padding-top:24px; border-top:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+}}
+.footer p {{ font-family:'DM Mono',monospace; font-size:.63rem; color:var(--muted); }}
+.footer a {{ color:var(--accent); text-decoration:none; }}
+
+/* ── Responsive ── */
+@media(max-width:640px) {{
+  .page {{ padding:0 16px 48px; }}
+  .header {{ padding:32px 0 28px; }}
+  .header-inner {{ flex-direction:column; }}
+  .update-block {{ align-items:flex-start; width:100%; }}
+  .toolbar {{ flex-direction:column; align-items:stretch; }}
+  .controls {{ flex-direction:column; }}
+  .search-wrap input {{ width:100%; }}
+  .search-wrap input:focus {{ width:100%; }}
+  .grid {{ grid-template-columns:1fr; }}
+  .apy-main {{ font-size:2rem; }}
+}}
 </style>
 </head>
 <body>
-<div class="wrapper">
-  <header>
-    <div class="header-top">
-      <div class="logo-area">
-        <h1>DEFI <span>YIELD</span> RADAR</h1>
-        <p>// MISE À JOUR AUTOMATIQUE CHAQUE LUNDI · DEFILLAMA</p>
+<div class="page">
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <h1>DeFi <em>Yield</em> Radar</h1>
+        <p class="brand-sub">// {len(results)} protocoles · données DeFiLlama</p>
       </div>
-      <div class="update-badge">
+      <div class="update-block">
         <span class="update-label">Dernière mise à jour</span>
         <span class="update-date">{date_fr}</span>
-        <span class="update-next">↻ Prochaine mise à jour : lundi 8h UTC</span>
+        <span class="update-next">↻ {next_monday}</span>
       </div>
-    </div>
-    <div class="stats-bar">
-      <div class="stat"><span class="stat-value">{len(results)}</span><span class="stat-label">Protocoles</span></div>
-      <div class="stat"><span class="stat-value">{max_apy}</span><span class="stat-label">APY Max</span></div>
-      <div class="stat"><span class="stat-value">{median_apy}</span><span class="stat-label">APY Médian</span></div>
     </div>
   </header>
 
-  <div class="filters" id="filters">
-    <button class="filter-btn active" data-filter="all">Tous</button>
-    <button class="filter-btn" data-filter="Lending">Lending</button>
-    <button class="filter-btn" data-filter="Liquidity">Liquidité</button>
-    <button class="filter-btn" data-filter="Staking">Staking</button>
-    <button class="filter-btn" data-filter="CDP">CDP</button>
-    <button class="filter-btn" data-filter="Yield">Yield Agg.</button>
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-value">{len(results)}</div>
+      <div class="stat-label">Protocoles</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{max_apy}</div>
+      <div class="stat-label">APY Max</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{median_apy}</div>
+      <div class="stat-label">APY Médian</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{avg_apy}</div>
+      <div class="stat-label">APY Moyen</div>
+    </div>
   </div>
 
-  <div class="disclaimer">⚠ APY générés chaque lundi depuis DeFiLlama. Ils varient constamment. Ce dashboard n'est pas un conseil financier — DYOR.</div>
-
-  <div class="protocols-grid" id="grid">
-    {cards_html}
+  <div class="toolbar">
+    <div class="filters" id="filters">
+      <button class="filter-btn active" data-filter="all">Tous</button>
+      <button class="filter-btn" data-filter="Lending">Lending</button>
+      <button class="filter-btn" data-filter="Staking">Staking</button>
+      <button class="filter-btn" data-filter="Liquidity">Liquidité</button>
+      <button class="filter-btn" data-filter="Yield">Yield Agg.</button>
+      <button class="filter-btn" data-filter="CDP">CDP</button>
+    </div>
+    <div class="controls">
+      <div class="search-wrap">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="9" cy="9" r="6"/><path d="m15 15 3 3"/>
+        </svg>
+        <input type="text" id="search" placeholder="Rechercher…">
+      </div>
+      <select class="sort-select" id="sort">
+        <option value="apy_desc">APY ↓</option>
+        <option value="apy_asc">APY ↑</option>
+        <option value="tvl_desc">TVL ↓</option>
+        <option value="risk_asc">Risque ↑</option>
+        <option value="name_asc">Nom A→Z</option>
+      </select>
+    </div>
   </div>
 
-  <footer>
-    <p>Données : <a href="https://defillama.com/yields" target="_blank">DeFiLlama</a> · Généré le {date_fr}</p>
+  <div class="disclaimer">
+    ⚠️ Les APY sont indicatifs et varient constamment. Ce dashboard n'est pas un conseil financier — DYOR.
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty">Aucun protocole ne correspond à votre recherche.</div>
+
+  <footer class="footer">
+    <p>Données : <a href="https://defillama.com/yields" target="_blank">DeFiLlama API</a> · Généré le {date_fr}</p>
     <p>Automatisé via <a href="https://github.com/features/actions" target="_blank">GitHub Actions</a> · Hébergé sur GitHub Pages</p>
   </footer>
 </div>
+
 <script>
-  document.getElementById('filters').addEventListener('click', e => {{
-    const btn = e.target.closest('.filter-btn');
-    if (!btn) return;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const f = btn.dataset.filter;
-    document.querySelectorAll('.card').forEach(c => {{
-      c.style.display = (f === 'all' || c.dataset.category === f) ? '' : 'none';
-    }});
+const DATA = {cards_json};
+
+const RISK_LABEL = {{ low:'Faible', medium:'Modéré', high:'Élevé' }};
+
+function card(d, delay) {{
+  const sub = (d.apy_base && d.apy_reward)
+    ? `<span class="apy-split">Base ${{d.apy_base}}% + Rewards ${{d.apy_reward}}%</span>` : '';
+  return `
+  <div class="card" style="--c-accent:${{d.accent}};animation-delay:${{delay}}ms" data-cat="${{d.category}}" data-name="${{d.name.toLowerCase()}}">
+    <div class="card-top">
+      <div class="proto-id">
+        <div class="proto-icon">${{d.icon}}</div>
+        <div>
+          <div class="proto-name">${{d.name}}</div>
+          <div class="proto-chain">${{d.chain}}</div>
+        </div>
+      </div>
+      <div class="badges">
+        <span class="cat-badge">${{d.category}}</span>
+        <span class="risk-badge risk-${{d.risk}}">${{RISK_LABEL[d.risk]}}</span>
+      </div>
+    </div>
+    <div class="apy-row">
+      <div class="apy-main">${{d.apy_fmt}}</div>
+      <div class="apy-meta">
+        <span class="apy-tag">APY / an</span>
+        ${{sub}}
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <span class="metric-label">TVL</span>
+        <span class="metric-value">${{d.tvl_fmt}}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Stratégie</span>
+        <span class="metric-value">${{d.strategy}}</span>
+      </div>
+    </div>
+    <p class="description">${{d.description}}</p>
+    <div class="card-bottom">
+      <a href="${{d.url}}" target="_blank" rel="noopener" class="visit-link" style="background:${{d.accent}}">
+        Accéder
+        <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8L8 2M5 2h3v3"/></svg>
+      </a>
+    </div>
+  </div>`;
+}}
+
+let activeFilter = 'all';
+let searchQ = '';
+let sortKey = 'apy_desc';
+
+function sorted(arr) {{
+  return [...arr].sort((a,b) => {{
+    if (sortKey === 'apy_desc')  return b.apy - a.apy;
+    if (sortKey === 'apy_asc')   return a.apy - b.apy;
+    if (sortKey === 'tvl_desc')  return b.tvl - a.tvl;
+    if (sortKey === 'risk_asc')  return a.risk_score - b.risk_score;
+    if (sortKey === 'name_asc')  return a.name.localeCompare(b.name);
+    return 0;
   }});
+}}
+
+function render() {{
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  let items = DATA.filter(d => {{
+    const catOk  = activeFilter === 'all' || d.category === activeFilter;
+    const nameOk = d.name.toLowerCase().includes(searchQ) || d.description.toLowerCase().includes(searchQ);
+    return catOk && nameOk;
+  }});
+  items = sorted(items);
+  if (!items.length) {{
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+  }} else {{
+    empty.style.display = 'none';
+    grid.innerHTML = items.map((d,i) => card(d, i*50)).join('');
+  }}
+}}
+
+document.getElementById('filters').addEventListener('click', e => {{
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = btn.dataset.filter;
+  render();
+}});
+
+document.getElementById('search').addEventListener('input', e => {{
+  searchQ = e.target.value.toLowerCase().trim();
+  render();
+}});
+
+document.getElementById('sort').addEventListener('change', e => {{
+  sortKey = e.target.value;
+  render();
+}});
+
+render();
 </script>
 </body>
 </html>"""
@@ -256,18 +625,17 @@ def main():
         pool = find_best_pool(pools, proto)
         name = proto['name']
         if pool:
-            print(f"  ✓ {name:20s} → APY {fmt_apy(pool.get('apy')):8s}  TVL {fmt_tvl(pool.get('tvlUsd')):10s}  [{pool.get('symbol','')}]")
+            print(f"  ✓ {{name:22s}} → APY {{fmt_apy(pool.get('apy')):8s}}  TVL {{fmt_tvl(pool.get('tvlUsd')):10s}}")
         else:
-            print(f"  ✗ {name:20s} → not found")
+            print(f"  ✗ {{name:22s}} → not found")
         results.append((proto, pool))
 
     generated_at = datetime.now(timezone.utc)
     html = build_html(results, generated_at)
-
     out = Path("docs/index.html")
     out.parent.mkdir(exist_ok=True)
     out.write_text(html, encoding="utf-8")
-    print(f"\n✅ Generated → {out}  ({len(html):,} bytes)")
+    print(f"\n✅ Generated → {{out}}  ({{len(html):,}} bytes)")
 
 if __name__ == "__main__":
     main()
